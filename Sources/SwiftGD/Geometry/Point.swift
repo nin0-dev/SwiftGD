@@ -31,7 +31,7 @@ extension Point {
     }
 }
 
-extension Point: Equatable {
+extension Point: Equatable, Hashable {
     /// Returns a Boolean value indicating whether two values are equal.
     ///
     /// Equality is the inverse of inequality. For any values `a` and `b`,
@@ -42,5 +42,22 @@ extension Point: Equatable {
     ///   - rhs: Another value to compare.
     public static func == (lhs: Point, rhs: Point) -> Bool {
         return lhs.x == rhs.x && lhs.y == rhs.y
+    }
+    
+    public static func + (lhs: SwiftGD.Point, rhs: SwiftGD.Point) -> Point {
+        return Point(x: lhs.x + rhs.x, y: lhs.y + rhs.y)
+    }
+        
+    public static func - (lhs: SwiftGD.Point, rhs: SwiftGD.Point) -> Point {
+        return Point(x: lhs.x - rhs.x, y: lhs.y - rhs.y)
+    }
+        
+    public static func * (lhs: SwiftGD.Point, rhs: Int) -> Point {
+        return Point(x: lhs.x * rhs, y: lhs.y * rhs)
+    }
+        
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(x)
+        hasher.combine(y)
     }
 }
