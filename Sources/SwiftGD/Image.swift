@@ -1,11 +1,11 @@
-#if os(Linux)
-import Glibc
-#else
-import Darwin
-#endif
-
 import Foundation
 import gd
+
+#if os(Linux)
+    import Glibc
+#else
+    import Darwin
+#endif
 
 // In case you were wondering: it's a class rather than a struct because we need
 // deinit to free the internal GD pointer, and that's only available to classes.
@@ -34,50 +34,65 @@ public class Image {
     private init(gdImage: gdImagePtr) {
         self.internalImage = gdImage
     }
-    
+
     public func cloned() -> Image? {
         guard let output = gdImageClone(internalImage) else { return nil }
         return Image(gdImage: output)
     }
 
     public func resizedTo(width: Int, height: Int, applySmoothing: Bool = true) -> Image? {
-        applyInterpolation(enabled: applySmoothing, currentSize: size, newSize: Size(width: width, height: height))
+        applyInterpolation(
+            enabled: applySmoothing, currentSize: size, newSize: Size(width: width, height: height))
 
-        guard let output = gdImageScale(internalImage, UInt32(width), UInt32(height)) else { return nil }
+        guard let output = gdImageScale(internalImage, UInt32(width), UInt32(height)) else {
+            return nil
+        }
         return Image(gdImage: output)
     }
 
     public func resizedTo(width: Int, applySmoothing: Bool = true) -> Image? {
         let currentSize = size
         let heightAdjustment = Double(width) / Double(currentSize.width)
-        let newSize = Size(width: Int32(width), height: Int32(Double(currentSize.height) * Double(heightAdjustment)))
+        let newSize = Size(
+            width: Int32(width),
+            height: Int32(Double(currentSize.height) * Double(heightAdjustment)))
 
         applyInterpolation(enabled: applySmoothing, currentSize: currentSize, newSize: newSize)
 
-        guard let output = gdImageScale(internalImage, UInt32(newSize.width), UInt32(newSize.height)) else { return nil }
+        guard
+            let output = gdImageScale(internalImage, UInt32(newSize.width), UInt32(newSize.height))
+        else { return nil }
         return Image(gdImage: output)
     }
 
     public func resizedTo(height: Int, applySmoothing: Bool = true) -> Image? {
         let currentSize = size
         let widthAdjustment = Double(height) / Double(currentSize.height)
-        let newSize = Size(width: Int32(Double(currentSize.width) * Double(widthAdjustment)), height: Int32(height))
+        let newSize = Size(
+            width: Int32(Double(currentSize.width) * Double(widthAdjustment)), height: Int32(height)
+        )
 
         applyInterpolation(enabled: applySmoothing, currentSize: currentSize, newSize: newSize)
 
-        guard let output = gdImageScale(internalImage, UInt32(newSize.width), UInt32(height)) else { return nil }
+        guard let output = gdImageScale(internalImage, UInt32(newSize.width), UInt32(height)) else {
+            return nil
+        }
         return Image(gdImage: output)
     }
-    
+
     public func cropped(to rect: Rectangle) -> Image? {
-        var rect = gdRect(x: Int32(rect.point.x), y: Int32(rect.point.y), width: Int32(rect.size.width), height: Int32(rect.size.height))
+        var rect = gdRect(
+            x: Int32(rect.point.x), y: Int32(rect.point.y), width: Int32(rect.size.width),
+            height: Int32(rect.size.height))
 
         guard let output = gdImageCrop(internalImage, &rect) else { return nil }
         return Image(gdImage: output)
     }
 
     public func rotated(_ angle: Angle) -> Image? {
-        guard let output = gdImageRotateInterpolated(internalImage, Float(angle.degrees), 0) else { return nil }
+        guard let output = gdImageRotateInterpolated(internalImage, Float(angle.degrees), 0) else {
+            return nil
+        }
         return Image(gdImage: output)
     }
 
@@ -139,17 +154,19 @@ public class Image {
     ///   text).
     @discardableResult
     public func renderText(
-        _ text: String, from: Point, fontList: [String], color: Color, size: Double, angle: Angle = .zero
+        _ text: String, from: Point, fontList: [String], color: Color, size: Double,
+        angle: Angle = .zero
     ) -> (upperLeft: Point, upperRight: Point, lowerRight: Point, lowerLeft: Point) {
         /// Notes on `gdImageStringFT`:
         /// - it returns an Tuple of empty `Point`s if there is nothing to render or no valid fonts
         /// - `gdImageStringFT` accepts a semicolon delimited list of fonts.
         /// - `gdImageStringFT` expects pointers to `text` and `fontList` values
         guard !text.isEmpty,
-              !fontList.isEmpty,
-              var textCChar = text.cString(using: .utf8),
-              var joinedFonts = fontList.joined(separator: ";").cString(using: .utf8) else {
-                  return (upperLeft: .zero, upperRight: .zero, lowerRight: .zero, lowerLeft: .zero)
+            !fontList.isEmpty,
+            var textCChar = text.cString(using: .utf8),
+            var joinedFonts = fontList.joined(separator: ";").cString(using: .utf8)
+        else {
+            return (upperLeft: .zero, upperRight: .zero, lowerRight: .zero, lowerLeft: .zero)
         }
         let red = Int32(color.redComponent * 255.0)
         let green = Int32(color.greenComponent * 255.0)
@@ -162,7 +179,9 @@ public class Image {
         // points in the following order:
         // lower left, lower right, upper right, and upper left corner.
         var boundingBox: [Int32] = .init(repeating: .zero, count: 8)
-        gdImageStringFT(internalImage, &boundingBox, internalColor, &joinedFonts, size, -angle.radians, Int32(from.x), Int32(from.y), &textCChar)
+        gdImageStringFT(
+            internalImage, &boundingBox, internalColor, &joinedFonts, size, -angle.radians,
+            Int32(from.x), Int32(from.y), &textCChar)
 
         let lowerLeft = Point(x: boundingBox[0], y: boundingBox[1])
         let lowerRight = Point(x: boundingBox[2], y: boundingBox[3])
@@ -190,10 +209,11 @@ public class Image {
         let internalColor = gdImageColorAllocateAlpha(internalImage, red, green, blue, alpha)
         defer { gdImageColorDeallocate(internalImage, internalColor) }
 
-        gdImageLine(internalImage, Int32(from.x), Int32(from.y), Int32(to.x), Int32(to.y), internalColor)
+        gdImageLine(
+            internalImage, Int32(from.x), Int32(from.y), Int32(to.x), Int32(to.y), internalColor)
     }
 
-    public func drawImage(_ image:Image, at topLeft: Point = .zero) {
+    public func drawImage(_ image: Image, at topLeft: Point = .zero) {
         let width = Int32(self.size.width - topLeft.x)
         let height = Int32(self.size.height - topLeft.y)
         let dst_x = Int32(topLeft.x)
@@ -231,7 +251,9 @@ public class Image {
         let internalColor = gdImageColorAllocateAlpha(internalImage, red, green, blue, alpha)
         defer { gdImageColorDeallocate(internalImage, internalColor) }
 
-        gdImageEllipse(internalImage, Int32(center.x), Int32(center.y), Int32(size.width), Int32(size.height), internalColor)
+        gdImageEllipse(
+            internalImage, Int32(center.x), Int32(center.y), Int32(size.width), Int32(size.height),
+            internalColor)
     }
 
     public func fillEllipse(center: Point, size: Size, color: Color) {
@@ -242,7 +264,9 @@ public class Image {
         let internalColor = gdImageColorAllocateAlpha(internalImage, red, green, blue, alpha)
         defer { gdImageColorDeallocate(internalImage, internalColor) }
 
-        gdImageFilledEllipse(internalImage, Int32(center.x), Int32(center.y), Int32(size.width), Int32(size.height), internalColor)
+        gdImageFilledEllipse(
+            internalImage, Int32(center.x), Int32(center.y), Int32(size.width), Int32(size.height),
+            internalColor)
     }
 
     public func strokeRectangle(topLeft: Point, bottomRight: Point, color: Color) {
@@ -253,7 +277,9 @@ public class Image {
         let internalColor = gdImageColorAllocateAlpha(internalImage, red, green, blue, alpha)
         defer { gdImageColorDeallocate(internalImage, internalColor) }
 
-        gdImageRectangle(internalImage, Int32(topLeft.x), Int32(topLeft.y), Int32(bottomRight.x), Int32(bottomRight.y), internalColor)
+        gdImageRectangle(
+            internalImage, Int32(topLeft.x), Int32(topLeft.y), Int32(bottomRight.x),
+            Int32(bottomRight.y), internalColor)
     }
 
     public func fillRectangle(topLeft: Point, bottomRight: Point, color: Color) {
@@ -264,7 +290,9 @@ public class Image {
         let internalColor = gdImageColorAllocateAlpha(internalImage, red, green, blue, alpha)
         defer { gdImageColorDeallocate(internalImage, internalColor) }
 
-        gdImageFilledRectangle(internalImage, Int32(topLeft.x), Int32(topLeft.y), Int32(bottomRight.x), Int32(bottomRight.y), internalColor)
+        gdImageFilledRectangle(
+            internalImage, Int32(topLeft.x), Int32(topLeft.y), Int32(bottomRight.x),
+            Int32(bottomRight.y), internalColor)
     }
 
     public func flip(_ mode: FlipMode) {
@@ -327,17 +355,22 @@ extension Image {
             return nil
         }
 
-        defer { fclose(inputFile) }
+        #if os(Linux)
+            defer { fclose(inputFile!) }
+        #else
+            defer { fclose(inputFile) }
+        #endif
 
         let ext = url.lastPathComponent.lowercased()
 
-        let loadedImage: gdImagePtr? = if ext.hasSuffix("jpg") || ext.hasSuffix("jpeg") {
-            gdImageCreateFromJpeg(inputFile)
-        } else if ext.hasSuffix("png") {
-            gdImageCreateFromPng(inputFile)
-        } else {
-            nil
-        }
+        let loadedImage: gdImagePtr? =
+            if ext.hasSuffix("jpg") || ext.hasSuffix("jpeg") {
+                gdImageCreateFromJpeg(inputFile)
+            } else if ext.hasSuffix("png") {
+                gdImageCreateFromPng(inputFile)
+            } else {
+                nil
+            }
 
         if let image = loadedImage {
             self.init(gdImage: image)
@@ -363,7 +396,11 @@ extension Image {
             return false
         }
 
-        defer { fclose(outputFile) }
+        #if os(Linux)
+            defer { fclose(outputFile!) }
+        #else
+            defer { fclose(outputFile) }
+        #endif
 
         // write the correct output format based on the path extension
         switch fileType {
