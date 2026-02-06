@@ -356,7 +356,7 @@ extension Image {
         }
 
         #if os(Linux)
-            defer { fclose(inputFile!) }
+            defer { fclose(inputFile) }
         #else
             defer { fclose(inputFile) }
         #endif
@@ -397,7 +397,7 @@ extension Image {
         }
 
         #if os(Linux)
-            defer { fclose(outputFile!) }
+            defer { fclose(outputFile) }
         #else
             defer { fclose(outputFile) }
         #endif
